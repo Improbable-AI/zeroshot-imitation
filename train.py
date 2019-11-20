@@ -11,6 +11,7 @@ import copy
 import tensorflow as tf
 import time
 import matplotlib.pyplot as plt
+import torch
 
 slim = tf.contrib.slim
 from nets import alexnet_geurzhoy
@@ -38,23 +39,19 @@ def init_weights(name, shape):
     return tf.get_variable(name, shape=shape, initializer=tf.random_normal_initializer(0, 0.01))
 
 def make_network(x, network_size):
-    """Makes fully connected network with input x and given layer sizes.
+    """
+    Makes fully connected network with input x and given layer sizes.
     Assume len(network_size) >= 2
     """
-    input_size = network_size[0]
-    output_size = network_size.pop()
-    a = input_size
-    cur = x
-    i = 0
-    for a, b in zip(network_size, network_size[1:]):
-        W = init_weights("W" + str(i), [a, b])
-        B = init_weights("B" + str(i), [1, b])
-        cur = tf.nn.elu(tf.matmul(cur, W) + B)
-        i += 1
-    W = init_weights("W" + str(i), [b, output_size])
-    B = init_weights("B" + str(i), [1, output_size])
-    prediction = tf.matmul(cur, W) + B
-    return prediction
+    layers = []
+    for i in range(len(network_size) - 1):
+        input_size = network_size[i]
+        output_size = network_size[i+1]
+        layers.append(torch.nn.Linear(input_size, output_size))
+        if i != len(network_size) - 2:
+            layers.append(torch.nn.ELU())
+    model = torch.nn.Sequential(*layers)
+    return model(x)
 
 def leaky_relu(x, alpha):
     return tf.maximum(x, alpha * x)
